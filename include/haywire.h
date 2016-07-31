@@ -136,6 +136,8 @@ enum hw_http_method
 #define SETSTRING(s,val) s.value=val; s.length=STRLENOF(val)
 #define APPENDSTRING(s,val) memcpy((char*)s->value + s->length, val, STRLENOF(val)); s->length+=STRLENOF(val)
 
+typedef	void* hw_http_response;
+
 typedef struct
 {
     char* value;
@@ -145,25 +147,26 @@ typedef struct
 typedef struct
 {
     char* http_listen_address;
-    int http_listen_port;
-    int thread_count;
+    unsigned int http_listen_port;
+    unsigned int thread_count;
     char* parser;
     bool tcp_nodelay;
+    unsigned int listen_backlog;
+    unsigned int max_request_size;
 } configuration;
-
+    
 typedef struct
 {
     unsigned short http_major;
     unsigned short http_minor;
     unsigned char method;
     int keep_alive;
-	char* url;
+    hw_string* url;
     void* headers;
     hw_string* body;
-    int body_length;
+    size_t body_length;
+    enum {OK, SIZE_EXCEEDED, BAD_REQUEST, INTERNAL_ERROR} state;
 } http_request;
-
-typedef	void* hw_http_response;
 
 typedef void (HAYWIRE_CALLING_CONVENTION *http_request_callback)(http_request* request, hw_http_response* response, void* user_data);
 typedef void (HAYWIRE_CALLING_CONVENTION *http_response_complete_callback)(void* user_data);
@@ -172,7 +175,7 @@ HAYWIRE_EXTERN int hw_init_from_config(char* configuration_filename);
 HAYWIRE_EXTERN int hw_init_with_config(configuration* config);
 HAYWIRE_EXTERN int hw_http_open();
 HAYWIRE_EXTERN void hw_http_add_route(char* route, http_request_callback callback, void* user_data);
-HAYWIRE_EXTERN char* hw_get_header(http_request* request, char* key);
+HAYWIRE_EXTERN hw_string* hw_get_header(http_request* request, hw_string* key);
 
 HAYWIRE_EXTERN void hw_free_http_response(hw_http_response* response);
 HAYWIRE_EXTERN void hw_set_http_version(hw_http_response* response, unsigned short major, unsigned short minor);

@@ -1,7 +1,10 @@
+#include <stddef.h>
+
 #pragma once
 #include "uv.h"
 #include "http_parser.h"
 #include "http_request.h"
+#include "http_request_buffers.h"
 
 typedef struct
 {
@@ -9,10 +12,10 @@ typedef struct
     http_parser parser;
     uv_write_t write_req;
     http_request* request;
-    char current_header_key[1024];
-    int current_header_key_length;
-    char current_header_value[1024];
-    int current_header_value_length;
+    hw_string current_header_key;
+    hw_string current_header_value;
     int keep_alive;
     int last_was_value;
+    enum {OPEN, CLOSING, CLOSED} state;
+    hw_request_buffer* buffer;
 } http_connection;

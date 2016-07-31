@@ -6,7 +6,6 @@ include("common.cmake")
 # ----------------------------------------
 project(haywire C)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-#set(CMAKE_BUILD_TYPE Debug)
 
 add_definitions(-std=gnu99)
 #add_definitions(-mavx)
@@ -17,6 +16,10 @@ add_definitions(-Wall)
 add_definitions(-Wextra)
 add_definitions(-Wcast-align)
 add_definitions(-w)
+
+if (UNIX)
+    add_definitions(-DUNIX)
+endif (UNIX)
 
 file(GLOB_RECURSE HAYWIRE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/haywire/*.h

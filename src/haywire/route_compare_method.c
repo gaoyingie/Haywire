@@ -1,49 +1,66 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <haywire.h>
+#include "hw_string.h"
 #include "route_compare_method.h"
 
-#if defined(_WIN32) || defined(_WIN64) 
-    #define strcasecmp _stricmp 
-    #define strncasecmp _strnicmp 
-    #define strtok_r strtok_s
-#endif
+typedef struct hw_route_token_st {
+    hw_string string;
+    int start;
+} hw_route_token;
 
-static char route_key[2048];
+void hw_route_next_token(hw_string* url, int start, hw_route_token* result) {
+    while (start < url->length && (url->value[start] == '/')) {
+        start++;
+    }
+    
+    int end = start;
+    
+    while (end < url->length && url->value[end] != '/') {
+        end++;
+    }
+    
+    if (end != start) {
+        result->string.value = url->value + start;
+        result->string.length = end - start;
+        result->start = start;
+    }
+    else {
+        result->string.value = NULL;
+        result->string.length = 0;
+        result->start = -1;
+    }
+}
 
-int hw_route_compare_method(char *url, char* route)
+int hw_route_compare_method(hw_string* url, char* route)
 {
     int equal = 0;
-    char *route_token;
-    char *route_token_ptr;
-    char *request_token;
-    char *request_token_ptr;
-    char prefix;
     int match = 0;
     
-    strcpy(route_key, route);
+    // TODO route should probably be a hw_string* too
+    hw_string hw_route;
+    hw_route.value = route;
+    hw_route.length = strlen(route);
     
-    route_token = strtok_r(route_key, "/", &route_token_ptr);
-    request_token = strtok_r(url, "/", &request_token_ptr);
+    hw_route_token route_token;
+    hw_route_token request_token;
+
+    hw_route_next_token(url, 0, &request_token);
+    hw_route_next_token(&hw_route, 0, &route_token);
     
-    while (route_token != NULL && request_token != NULL)
+    while (route_token.string.value != NULL && request_token.string.value != NULL)
     {
-        if (route_token == NULL || request_token == NULL)
-            break;
-        
-        prefix = *route_token;
-        if (prefix == '$')
-        {
-            // TODO: Do request URL variable substitution.
+        if (route_token.string.value[0] == '*') {
+            // wildcard support: any route fragment marked with '*' matches the corresponding url fragment
+            equal = 1;
         }
         else
         {
-            /* TODO: Remove strlen() call here and maybe replace with hw_string */
-            match = strncasecmp(route_token, request_token, strlen(route_token));
+            match = hw_strcmp(&route_token.string, &request_token.string);
             if (!match)
             {
                 equal = 1;
-                //break;
             }
             else
             {
@@ -52,24 +69,23 @@ int hw_route_compare_method(char *url, char* route)
             }
         }
         
-        //printf ("ROUTE:%s\tREQUEST:%s\n", route_token, request_token);
-        route_token = strtok_r(NULL, "/", &route_token_ptr);
-        request_token = strtok_r(NULL, "/", &request_token_ptr);
+        hw_route_next_token(url, request_token.start + request_token.string.length + 1, &request_token);
+        hw_route_next_token(&hw_route, route_token.start + route_token.string.length + 1, &route_token);
     }
     
     if (!equal)
     {
-        /* TODO: Remove strlen() call here and maybe replace with hw_string */
-        match = strncasecmp(route_key, url, strlen(route_key));
+        match = hw_strcmp(url, &hw_route);
         if (!match)
         {
             equal = 1;
         }
     }
-    
-    if ((route_token == NULL && request_token != NULL) || (route_token != NULL && request_token == NULL))
+
+    if ((route_token.string.value == NULL && request_token.string.value != NULL) || (route_token.string.value != NULL && request_token.string.value == NULL))
     {
         equal = 0;
     }
+    
     return equal;
 }
